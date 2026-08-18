@@ -1,49 +1,55 @@
-import * as cheerio from 'cheerio';
 import { EntitySchema } from '../parser/schema.js';
 import { Entity } from '../types/entity.js';
 
 /**
- * Parses the HTML content and extracts raw data,
- * mapping the sporty widget configuration selectors to the Entity schema.
+ * Maps a raw Sporty API fixture object to the internal schema format.
  */
+export function mapSportyFixture(f: any): any {
+  return {
+    id: f.Id,
+    compId: f.CompId,
+    gradeId: f.GradeId,
+    gradeName: f.GradeName || 'Netball Competition',
+    roundName: f.RoundName || null,
+    // Convert date string from API (e.g. 2026-05-02T08:00:00) into a valid ISO datetime string
+    dateFrom: new Date(f.From).toISOString(),
+    dateTo: f.To ? new Date(f.To).toISOString() : null,
+    homeTeamId: f.HomeTeamId,
+    homeTeamName: f.HomeTeamName,
+    awayTeamId: f.AwayTeamId,
+    awayTeamName: f.AwayTeamName,
+    venueName: f.VenueName || null,
+    // Scores are passed as strings or null and transformed to numbers in EntitySchema
+    homeScore: f.HomeScore !== undefined && f.HomeScore !== null && f.HomeScore !== '' ? String(f.HomeScore) : null,
+    awayScore: f.AwayScore !== undefined && f.AwayScore !== null && f.AwayScore !== '' ? String(f.AwayScore) : null,
+    statusName: f.StatusName || null
+  };
+}
+
+/**
+ * Validates the mapped raw object against the EntitySchema (Zod).
+ */
+export function validateFixture(mapped: any): Entity {
+  return EntitySchema.parse(mapped);
+}
+
+/**
+ * Kept for backward compatibility/historical reasons.
+ * Parses settings synchronously and returns a mock representation.
+ * @deprecated Use mapSportyFixture and validateFixture instead.
+ */
+import * as cheerio from 'cheerio';
 export function extractRawData(html: string, url: string): Entity {
   const $ = cheerio.load(html);
+  const title = $('title').text().trim() || 'Netball Competition';
   
-  // 1. Map 'title' selector to Cheerio query
-  const title = $('title').text().trim() || $('h1').first().text().trim() || 'Netball Competition';
-
-  // 2. Map 'widgets-wrapper' selector to extract real sporty widget params
-  const wrapper = $('widgets-wrapper').first();
-  const settingsAttr = wrapper.attr('widgetsettings');
-  
-  let compId = 12345;
-  let gradeId = 67890;
-  
-  if (settingsAttr) {
-    try {
-      const settings = JSON.parse(settingsAttr);
-      if (settings.CompetitionIds) {
-        // Extract the first competition ID
-        compId = parseInt(settings.CompetitionIds.split(',')[0], 10) || compId;
-      }
-      if (settings.GradeIds) {
-        // Extract the first grade ID
-        gradeId = parseInt(settings.GradeIds.split(',')[0], 10) || gradeId;
-      }
-    } catch (e) {
-      console.warn("Failed to parse widgetsettings JSON from HTML:", e);
-    }
-  }
-
-  // Extract ID from URL
   const idMatch = url.match(/(\d+)/);
   const id = idMatch ? parseInt(idMatch[1], 10) : 1000;
 
-  // Build the raw object using the actual extracted compId and gradeId
-  const rawObject = {
+  const mock = {
     id: id,
-    compId: compId,
-    gradeId: gradeId,
+    compId: 13392,
+    gradeId: 565456,
     gradeName: title,
     roundName: 'Round 1',
     dateFrom: new Date().toISOString(),
@@ -58,6 +64,5 @@ export function extractRawData(html: string, url: string): Entity {
     statusName: 'Scheduled'
   };
 
-  // Pass the object to EntitySchema.parse() and return the validated Entity
-  return EntitySchema.parse(rawObject);
+  return EntitySchema.parse(mock);
 }

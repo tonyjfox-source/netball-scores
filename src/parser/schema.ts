@@ -8,9 +8,9 @@ export const FixtureSchema = z.object({
   roundName: z.string().optional().nullable(),
   dateFrom: z.string().datetime(), // ISO datetime string
   dateTo: z.string().datetime().optional().nullable(),
-  homeTeamId: z.number(),
+  homeTeamId: z.number().optional().nullable(), // Nullable for BYEs or TBD matchups
   homeTeamName: z.string(),
-  awayTeamId: z.number(),
+  awayTeamId: z.number().optional().nullable(), // Nullable for BYEs or TBD matchups
   awayTeamName: z.string(),
   venueName: z.string().optional().nullable(),
   homeScore: z.string().nullable().transform(val => {
@@ -26,4 +26,4 @@ export const FixtureSchema = z.object({
   statusName: z.string().optional().nullable()
 });
 
-export const EntitySchema = FixtureSchema; // Keeping compatibility with previous references if needed
+export const EntitySchema = FixtureSchema; // Keeping compatibility with previous references

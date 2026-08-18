@@ -8,9 +8,9 @@ export const fixtures = sqliteTable('fixtures', {
   roundName: text('round_name'),
   dateFrom: text('date_from').notNull(),
   dateTo: text('date_to'),
-  homeTeamId: integer('home_team_id').notNull(),
+  homeTeamId: integer('home_team_id'), // Nullable for BYEs or TBD matchups
   homeTeamName: text('home_team_name').notNull(),
-  awayTeamId: integer('away_team_id').notNull(),
+  awayTeamId: integer('away_team_id'), // Nullable for BYEs or TBD matchups
   awayTeamName: text('away_team_name').notNull(),
   venueName: text('venue_name'),
   homeScore: integer('home_score'),

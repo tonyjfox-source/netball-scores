@@ -1,3 +1,7 @@
+import fs from 'fs';
+import path from 'path';
+import YAML from 'yaml';
+
 export interface ScraperConfig {
   targetUrl: string;
   scrapeIntervalMs: number;
@@ -6,19 +10,35 @@ export interface ScraperConfig {
   apiEndpoint: string;
 }
 
-export const config: ScraperConfig = {
-  // Target Netball North Harbour URL
-  targetUrl: 'https://www.netballnorthharbour.co.nz/draws-results/college-competition/college-saturday-1',
-  
-  // Scraper Loop execution interval (60 seconds)
-  scrapeIntervalMs: 60 * 1000,
-  
-  // Graceful loop timeout limit (6 hours)
-  maxExecutionTimeMs: 6 * 60 * 60 * 1000,
-  
-  // Polite sleep delay between sequential network calls (1000ms)
-  politeDelayMs: 1000,
-  
-  // Sporty API draws & results POST endpoint
-  apiEndpoint: 'https://www.netballnorthharbour.co.nz/api/v2/competition/widget/fixture/DatesNoCache'
-};
+const configPath = path.resolve(process.cwd(), 'config.yaml');
+
+function loadConfig(): ScraperConfig {
+  try {
+    if (fs.existsSync(configPath)) {
+      const fileContent = fs.readFileSync(configPath, 'utf8');
+      const parsed = YAML.parse(fileContent);
+      if (parsed && parsed.scraper) {
+        return {
+          targetUrl: parsed.scraper.targetUrl || 'https://www.netballnorthharbour.co.nz/draws-results/club-competition/saturday-club-1',
+          apiEndpoint: parsed.scraper.apiEndpoint || 'https://www.netballnorthharbour.co.nz/api/v2/competition/widget/fixture/DatesNoCache',
+          scrapeIntervalMs: parsed.scraper.scrapeIntervalMs ?? 60 * 1000,
+          maxExecutionTimeMs: parsed.scraper.maxExecutionTimeMs ?? 6 * 60 * 60 * 1000,
+          politeDelayMs: parsed.scraper.politeDelayMs ?? 1000
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Could not load config.yaml, falling back to default configuration:', err);
+  }
+
+  // Fallback defaults
+  return {
+    targetUrl: 'https://www.netballnorthharbour.co.nz/draws-results/club-competition/saturday-club-1',
+    apiEndpoint: 'https://www.netballnorthharbour.co.nz/api/v2/competition/widget/fixture/DatesNoCache',
+    scrapeIntervalMs: 60 * 1000,
+    maxExecutionTimeMs: 6 * 60 * 60 * 1000,
+    politeDelayMs: 1000
+  };
+}
+
+export const config: ScraperConfig = loadConfig();

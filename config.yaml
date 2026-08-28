@@ -1,0 +1,16 @@
+# Netball Score Tracker Configuration
+
+scraper:
+  targetUrl: "https://www.netballnorthharbour.co.nz/draws-results/club-competition/saturday-club-1"
+  apiEndpoint: "https://www.netballnorthharbour.co.nz/api/v2/competition/widget/fixture/DatesNoCache"
+  politeDelayMs: 1000
+
+schedule:
+  dayOfWeek: "Saturday"
+  startTime: "8am"
+  endTime: "1pm"
+  interval: 60
+
+server:
+  port: 3000
+  host: "0.0.0.0"

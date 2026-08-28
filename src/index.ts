@@ -1,17 +1,16 @@
 import { processUrl } from './scraper/pipeline.js';
 import { getEntities } from './db/repository.js';
-
-const TARGET_URL = 'https://www.netballnorthharbour.co.nz/draws-results/college-competition/college-saturday-1';
+import { config } from './scraper/config.js';
 
 async function main() {
   console.log('=========================================');
   console.log('Netball Score Tracker Scraper Entry Point');
   console.log('=========================================');
-  console.log(`Starting scrape pipeline for: ${TARGET_URL}`);
+  console.log(`Starting scrape pipeline for: ${config.targetUrl}`);
   
   try {
     const start = Date.now();
-    const fixtures = await processUrl(TARGET_URL);
+    const fixtures = await processUrl(config.targetUrl);
     const duration = ((Date.now() - start) / 1000).toFixed(2);
     
     console.log(`\nPipeline execution completed successfully in ${duration}s.`);

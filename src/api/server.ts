@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { getEntities, getTeams, MatchFilters } from '../db/repository.js';
 import { config } from '../scraper/config.js';
+import { dbEvents } from '../db/events.js';
 
 const app = express();
 const PORT = 3000;
@@ -26,26 +27,43 @@ if (fs.existsSync(frontendBuildPath)) {
 
 // Helper function to map database entities to simplified JSON score format
 function mapEntitiesToScores(entities: any[]) {
+  const now = new Date();
+
   return entities.map((entity) => {
     let status: 'LIVE' | 'FINAL' | 'UPCOMING' = 'UPCOMING';
-    if (entity.statusName) {
-      const statusUpper = entity.statusName.toUpperCase();
-      if (
-        statusUpper.includes('LIVE') ||
-        statusUpper.includes('IN PROGRESS') ||
-        statusUpper.includes('PLAYING')
-      ) {
-        status = 'LIVE';
-      } else if (
-        statusUpper.includes('PLAYED') ||
-        statusUpper.includes('FINAL') ||
-        statusUpper.includes('RESULT') ||
-        statusUpper.includes('COMPLETED') ||
-        statusUpper.includes('FINISHED') ||
-        (statusUpper === 'CONFIRMED' && entity.homeScore !== null && entity.awayScore !== null)
-      ) {
-        status = 'FINAL';
-      }
+
+    const startDate = entity.dateFrom ? new Date(entity.dateFrom) : null;
+    const endDate = entity.dateTo ? new Date(entity.dateTo) : (startDate ? new Date(startDate.getTime() + 90 * 60 * 1000) : null);
+    const hasScores = entity.homeScore !== null && entity.awayScore !== null;
+    const statusUpper = (entity.statusName || '').toUpperCase();
+
+    // 1. Explicit Live status strings OR current time falls within start & end time window
+    if (
+      statusUpper.includes('LIVE') ||
+      statusUpper.includes('IN PROGRESS') ||
+      statusUpper.includes('PLAYING') ||
+      (startDate && endDate && now >= startDate && now <= endDate)
+    ) {
+      status = 'LIVE';
+    }
+    // 2. Explicit Final status strings OR match end time has passed with recorded scores
+    else if (
+      statusUpper.includes('PLAYED') ||
+      statusUpper.includes('FINAL') ||
+      statusUpper.includes('RESULT') ||
+      statusUpper.includes('COMPLETED') ||
+      statusUpper.includes('FINISHED') ||
+      (endDate && now > endDate && hasScores)
+    ) {
+      status = 'FINAL';
+    }
+    // 3. Upcoming if match start time has not been reached yet
+    else if (startDate && now < startDate) {
+      status = 'UPCOMING';
+    }
+    // Fallback: If has scores and match start time was in the past, treat as FINAL
+    else if (hasScores && startDate && now > startDate) {
+      status = 'FINAL';
     }
 
     return {
@@ -88,11 +106,18 @@ app.get('/api/scores/stream', async (req, res) => {
   // Send initial data immediately upon connection
   await sendScores();
 
-  // Set interval timer to send scores every 3 seconds
-  const intervalId = setInterval(sendScores, 3000);
+  // Listen for instant database change events
+  const onChange = () => {
+    sendScores();
+  };
+  dbEvents.on('change', onChange);
+
+  // Heartbeat interval (every 10 seconds) for time-based status shifts
+  const intervalId = setInterval(sendScores, 10000);
 
   // Handle client connection cleanup
   req.on('close', () => {
+    dbEvents.off('change', onChange);
     clearInterval(intervalId);
     res.end();
   });

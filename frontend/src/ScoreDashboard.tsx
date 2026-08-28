@@ -161,9 +161,8 @@ export default function ScoreDashboard() {
       <header className="dashboard-header">
         <div className="header-brand">
           <span className="brand-icon">🏐</span>
-          <h1>Netball Score Tracker</h1>
+          <h1>Netball North Harbour</h1>
         </div>
-        <p className="header-subtitle">Real-time match scores & fixture schedule</p>
       </header>
 
       <main className="dashboard-main">
@@ -295,10 +294,10 @@ export default function ScoreDashboard() {
                       </div>
                     </div>
 
-                    {match.status === 'LIVE' && (
+                    {match.status === 'LIVE' && (match.quarter || match.timeRemaining) && (
                       <div className="card-footer">
-                        <span className="match-detail">Status: In Progress</span>
                         {match.quarter && <span className="match-detail">Quarter: {match.quarter}</span>}
+                        {match.timeRemaining && <span className="match-detail">Time: {match.timeRemaining}</span>}
                       </div>
                     )}
 

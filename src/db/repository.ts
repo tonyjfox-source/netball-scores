@@ -2,6 +2,7 @@ import { db } from './client.js';
 import { fixtures } from './schema.js';
 import { Entity } from '../types/entity.js';
 import { eq, like, or, and, desc, isNull, isNotNull } from 'drizzle-orm';
+import { dbEvents } from './events.js';
 
 export interface MatchFilters {
   id?: string;
@@ -44,6 +45,10 @@ export async function upsertEntity(data: Entity) {
       existing.homeScore !== (data.homeScore ?? null) ||
       existing.awayScore !== (data.awayScore ?? null) ||
       existing.statusName !== (data.statusName ?? null);
+  }
+
+  if (hasChanged) {
+    dbEvents.emit('change');
   }
 
   const updatedAtValue = hasChanged ? now : (existing?.updatedAt ?? now);

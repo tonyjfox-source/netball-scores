@@ -9,7 +9,7 @@ schedule:
   dayOfWeek: "Saturday"
   startTime: "8am"
   endTime: "1pm"
-  interval: 60
+  interval: 10
 
 favouriteTeams:
   - "TRH Navy 1"

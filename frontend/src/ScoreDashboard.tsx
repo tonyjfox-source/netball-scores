@@ -14,10 +14,11 @@ export interface Score {
 }
 
 export default function ScoreDashboard() {
+  const [favouriteTeams, setFavouriteTeams] = useState<string[]>([]);
   const [teams, setTeams] = useState<string[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [scores, setScores] = useState<Score[]>([]);
-  const [latestOnly, setLatestOnly] = useState<boolean>(false);
+  const [latestOnly, setLatestOnly] = useState<boolean>(true);
   const [loadingTeams, setLoadingTeams] = useState<boolean>(true);
   const [loadingScores, setLoadingScores] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,9 +36,14 @@ export default function ScoreDashboard() {
         }
         return res.json();
       })
-      .then((data: string[]) => {
+      .then((data: any) => {
         if (isMounted) {
-          setTeams(data);
+          if (Array.isArray(data)) {
+            setTeams(data);
+          } else {
+            setFavouriteTeams(data.favouriteTeams || []);
+            setTeams(data.teams || []);
+          }
           setLoadingTeams(false);
         }
       })
@@ -176,12 +182,23 @@ export default function ScoreDashboard() {
                   onChange={handleTeamChange}
                   disabled={loadingTeams}
                 >
-                  <option value="">-- Choose a Team --</option>
-                  {teams.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
+                  <option value="">- Choose a Team -</option>
+                  {favouriteTeams.length > 0 && (
+                    <optgroup label="⭐ Favourite Teams">
+                      {favouriteTeams.map((t) => (
+                        <option key={`fav-${t}`} value={t}>
+                          ⭐ {t}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  <optgroup label="All Teams">
+                    {teams.map((t) => (
+                      <option key={`all-${t}`} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
                 <span className="select-arrow">▼</span>
               </div>

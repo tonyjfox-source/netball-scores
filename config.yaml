@@ -11,6 +11,11 @@ schedule:
   endTime: "1pm"
   interval: 60
 
+favouriteTeams:
+  - "TRH Navy 1"
+  - "WGHS 6"
+  - "WGHS 15"
+
 server:
   port: 3000
   host: "0.0.0.0"

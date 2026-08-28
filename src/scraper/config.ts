@@ -16,6 +16,7 @@ export interface ScraperConfig {
   politeDelayMs: number;
   apiEndpoint: string;
   schedule: ScheduleConfig;
+  favouriteTeams: string[];
 }
 
 const configPath = path.resolve(process.cwd(), 'config.yaml');
@@ -28,6 +29,8 @@ function loadConfig(): ScraperConfig {
     interval: 60
   };
 
+  const defaultFavourites = ['TRH Navy 1', 'WGHS 6', 'WGHS 15'];
+
   try {
     if (fs.existsSync(configPath)) {
       const fileContent = fs.readFileSync(configPath, 'utf8');
@@ -35,6 +38,7 @@ function loadConfig(): ScraperConfig {
       if (parsed) {
         const scraperSection = parsed.scraper || {};
         const scheduleSection = parsed.schedule || {};
+        const favourites = Array.isArray(parsed.favouriteTeams) ? parsed.favouriteTeams : defaultFavourites;
 
         return {
           targetUrl: scraperSection.targetUrl || 'https://www.netballnorthharbour.co.nz/draws-results/club-competition/saturday-club-1',
@@ -47,7 +51,8 @@ function loadConfig(): ScraperConfig {
             startTime: scheduleSection.startTime || defaultSchedule.startTime,
             endTime: scheduleSection.endTime || defaultSchedule.endTime,
             interval: scheduleSection.interval ?? defaultSchedule.interval
-          }
+          },
+          favouriteTeams: favourites
         };
       }
     }
@@ -62,7 +67,8 @@ function loadConfig(): ScraperConfig {
     scrapeIntervalMs: 60 * 1000,
     maxExecutionTimeMs: 6 * 60 * 60 * 1000,
     politeDelayMs: 1000,
-    schedule: defaultSchedule
+    schedule: defaultSchedule,
+    favouriteTeams: defaultFavourites
   };
 }
 

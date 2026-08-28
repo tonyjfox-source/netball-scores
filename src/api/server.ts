@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { getEntities, getTeams, MatchFilters } from '../db/repository.js';
+import { config } from '../scraper/config.js';
 
 const app = express();
 const PORT = 3000;
@@ -138,11 +139,14 @@ app.get('/api/scores', async (req, res) => {
   }
 });
 
-// GET /api/teams endpoint that returns a list of all unique team names sorted alphabetically
+// GET /api/teams endpoint that returns favourite teams and all unique team names
 app.get('/api/teams', async (req, res) => {
   try {
     const teams = await getTeams();
-    res.json(teams);
+    res.json({
+      favouriteTeams: config.favouriteTeams || [],
+      teams: teams
+    });
   } catch (error: any) {
     console.error('Error fetching teams:', error);
     res.status(500).json({ error: 'Internal Server Error' });

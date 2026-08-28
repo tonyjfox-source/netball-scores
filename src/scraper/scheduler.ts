@@ -11,6 +11,12 @@ const DAYS_MAP: Record<string, number> = {
   saturday: 6
 };
 
+let isSchedulerEnabled = true;
+let isScrapeRunning = false;
+let lastScrapeTime: string | null = null;
+let lastScrapeCount: number = 0;
+let schedulerTimer: NodeJS.Timeout | null = null;
+
 /**
  * Parses time strings into minutes past midnight (0 - 1439).
  * Supports formats: "8am", "8:30am", "1pm", "1:00pm", "08:00", "13:00", "8".
@@ -18,7 +24,6 @@ const DAYS_MAP: Record<string, number> = {
 export function parseTimeToMinutes(timeStr: string): number {
   const normalized = timeStr.trim().toLowerCase();
 
-  // Match 12-hour format: e.g. "8am", "8:30am", "1pm", "1:00pm"
   const twelveHourMatch = normalized.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/);
   if (twelveHourMatch) {
     let hours = parseInt(twelveHourMatch[1], 10);
@@ -30,7 +35,6 @@ export function parseTimeToMinutes(timeStr: string): number {
     return hours * 60 + minutes;
   }
 
-  // Match 24-hour format: e.g. "08:00", "13:00"
   const twentyFourHourMatch = normalized.match(/^(\d{1,2}):(\d{2})$/);
   if (twentyFourHourMatch) {
     const hours = parseInt(twentyFourHourMatch[1], 10);
@@ -38,7 +42,6 @@ export function parseTimeToMinutes(timeStr: string): number {
     return hours * 60 + minutes;
   }
 
-  // Pure integer format: e.g. "8", "13"
   const plainHour = parseInt(normalized, 10);
   if (!isNaN(plainHour)) {
     return plainHour * 60;
@@ -80,12 +83,71 @@ export function isWithinSchedule(now: Date, schedule: ScheduleConfig): boolean {
   return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
 }
 
-let isScrapeRunning = false;
+/**
+ * Returns current status of scraper and scheduler.
+ */
+export function getScraperStatus() {
+  const now = new Date();
+  const schedule = config.schedule;
+  const activeWindow = isWithinSchedule(now, schedule);
+
+  return {
+    isEnabled: isSchedulerEnabled,
+    isScrapeRunning,
+    activeWindow,
+    lastScrapeTime,
+    lastScrapeCount,
+    schedule: {
+      dayOfWeek: schedule.dayOfWeek,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      intervalSeconds: schedule.interval
+    }
+  };
+}
+
+/**
+ * Toggles scheduler enabled/disabled state.
+ */
+export function toggleScheduler(enabled?: boolean): boolean {
+  if (typeof enabled === 'boolean') {
+    isSchedulerEnabled = enabled;
+  } else {
+    isSchedulerEnabled = !isSchedulerEnabled;
+  }
+  return isSchedulerEnabled;
+}
+
+/**
+ * Triggers an immediate scrape execution on demand.
+ */
+export async function triggerManualScrape(): Promise<{ success: boolean; fixtureCount?: number; error?: string }> {
+  if (isScrapeRunning) {
+    return { success: false, error: 'A scrape is already in progress.' };
+  }
+
+  isScrapeRunning = true;
+  try {
+    const fixtures = await processUrl(config.targetUrl);
+    lastScrapeTime = new Date().toISOString();
+    lastScrapeCount = fixtures.length;
+    return { success: true, fixtureCount: fixtures.length };
+  } catch (err: any) {
+    console.error(`[Manual Scrape] Error:`, err);
+    return { success: false, error: err.message || 'Scrape failed' };
+  } finally {
+    isScrapeRunning = false;
+  }
+}
 
 /**
  * Executes a single scheduled tick.
  */
 export async function tickScheduler(): Promise<void> {
+  if (!isSchedulerEnabled) {
+    return;
+  }
+
   const now = new Date();
   const timestamp = now.toLocaleString();
   const schedule = config.schedule;
@@ -100,6 +162,8 @@ export async function tickScheduler(): Promise<void> {
     isScrapeRunning = true;
     try {
       const fixtures = await processUrl(config.targetUrl);
+      lastScrapeTime = new Date().toISOString();
+      lastScrapeCount = fixtures.length;
       console.log(`[${new Date().toLocaleString()}] [Scheduler] Scrape completed successfully. Processed ${fixtures.length} fixtures.`);
     } catch (err) {
       console.error(`[${new Date().toLocaleString()}] [Scheduler] Error during scheduled scrape:`, err);
@@ -115,6 +179,8 @@ export async function tickScheduler(): Promise<void> {
  * Starts the continuous scheduler process based on config.yaml.
  */
 export function startScheduler(): void {
+  if (schedulerTimer) return;
+
   const { schedule, targetUrl } = config;
   console.log('====================================================');
   console.log('Netball Score Tracker Scraper Scheduler Started');
@@ -130,7 +196,7 @@ export function startScheduler(): void {
 
   // Schedule recurring execution
   const intervalMs = schedule.interval * 1000;
-  setInterval(tickScheduler, intervalMs);
+  schedulerTimer = setInterval(tickScheduler, intervalMs);
 }
 
 // Auto-run if executed directly

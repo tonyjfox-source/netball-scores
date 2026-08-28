@@ -3,6 +3,7 @@ import cors from 'cors';
 import { getEntities, getTeams, MatchFilters } from '../db/repository.js';
 import { config } from '../scraper/config.js';
 import { dbEvents } from '../db/events.js';
+import { startScheduler, getScraperStatus, toggleScheduler, triggerManualScrape } from '../scraper/scheduler.js';
 
 const app = express();
 const PORT = 3000;
@@ -178,8 +179,27 @@ app.get('/api/teams', async (req, res) => {
   }
 });
 
+// GET /api/scraper/status - Returns active status of scraper & scheduler
+app.get('/api/scraper/status', (req, res) => {
+  res.json(getScraperStatus());
+});
+
+// POST /api/scraper/toggle - Pauses or resumes the automated background scheduler
+app.post('/api/scraper/toggle', (req, res) => {
+  const bodyEnabled = typeof req.body?.enabled === 'boolean' ? req.body.enabled : undefined;
+  const isEnabled = toggleScheduler(bodyEnabled);
+  res.json({ success: true, isEnabled, status: getScraperStatus() });
+});
+
+// POST /api/scraper/trigger - Triggers an immediate scrape execution on demand
+app.post('/api/scraper/trigger', async (req, res) => {
+  const result = await triggerManualScrape();
+  res.json({ ...result, status: getScraperStatus() });
+});
+
 // Start the server listening on 0.0.0.0:3000
 app.listen(PORT, HOST, () => {
   console.log(`Server is running and listening on http://${HOST}:${PORT}`);
   console.log(`API endpoint available at http://${HOST}:${PORT}/api/scores`);
+  startScheduler();
 });

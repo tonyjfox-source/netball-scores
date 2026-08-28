@@ -13,6 +13,14 @@ export interface Score {
   dateFrom?: string;
 }
 
+export interface ScraperStatus {
+  isEnabled: boolean;
+  isScrapeRunning: boolean;
+  activeWindow: boolean;
+  lastScrapeTime: string | null;
+  lastScrapeCount: number;
+}
+
 export default function ScoreDashboard() {
   const [favouriteTeams, setFavouriteTeams] = useState<string[]>([]);
   const [teams, setTeams] = useState<string[]>([]);
@@ -22,6 +30,43 @@ export default function ScoreDashboard() {
   const [loadingTeams, setLoadingTeams] = useState<boolean>(true);
   const [loadingScores, setLoadingScores] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [scraperStatus, setScraperStatus] = useState<ScraperStatus | null>(null);
+  const [triggeringScrape, setTriggeringScrape] = useState<boolean>(false);
+
+  // Hook 0: Fetch Scraper Status
+  useEffect(() => {
+    fetch('/api/scraper/status')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => data && setScraperStatus(data))
+      .catch(() => {});
+  }, []);
+
+  const handleToggleScraper = async () => {
+    try {
+      const res = await fetch('/api/scraper/toggle', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setScraperStatus(data.status);
+      }
+    } catch (err) {
+      console.error('Error toggling scraper:', err);
+    }
+  };
+
+  const handleTriggerScrape = async () => {
+    setTriggeringScrape(true);
+    try {
+      const res = await fetch('/api/scraper/trigger', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setScraperStatus(data.status);
+      }
+    } catch (err) {
+      console.error('Error triggering scrape:', err);
+    } finally {
+      setTriggeringScrape(false);
+    }
+  };
 
   // Hook 1: Fetch all teams on mount
   useEffect(() => {
@@ -163,6 +208,24 @@ export default function ScoreDashboard() {
           <span className="brand-icon">🏐</span>
           <h1>Netball North Harbour</h1>
         </div>
+        {scraperStatus && (
+          <div className="scraper-controls">
+            <button
+              className={`scraper-toggle-btn ${scraperStatus.isEnabled ? 'active' : 'paused'}`}
+              onClick={handleToggleScraper}
+              title={scraperStatus.isEnabled ? 'Pause Scraper Scheduler' : 'Enable Scraper Scheduler'}
+            >
+              {scraperStatus.isEnabled ? '🟢 Scraper Active' : '⏸️ Scraper Paused'}
+            </button>
+            <button
+              className="scraper-trigger-btn"
+              onClick={handleTriggerScrape}
+              disabled={triggeringScrape || scraperStatus.isScrapeRunning}
+            >
+              {triggeringScrape || scraperStatus.isScrapeRunning ? '🔄 Syncing...' : '⚡ Sync Now'}
+            </button>
+          </div>
+        )}
       </header>
 
       <main className="dashboard-main">

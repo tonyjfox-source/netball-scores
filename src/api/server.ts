@@ -10,6 +10,19 @@ const HOST = '0.0.0.0';
 app.use(cors());
 app.use(express.json());
 
+// Serve built frontend assets in production if frontend/dist exists
+import fs from 'fs';
+import path from 'path';
+
+const frontendBuildPath = path.resolve(process.cwd(), 'frontend/dist');
+if (fs.existsSync(frontendBuildPath)) {
+  app.use(express.static(frontendBuildPath));
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(frontendBuildPath, 'index.html'));
+  });
+}
+
 // Helper function to map database entities to simplified JSON score format
 function mapEntitiesToScores(entities: any[]) {
   return entities.map((entity) => {
@@ -41,8 +54,6 @@ function mapEntitiesToScores(entities: any[]) {
       teamB: entity.awayTeamName,
       scoreB: entity.awayScore ?? 0,
       status,
-      quarter: 'Q3',
-      timeRemaining: '04:12',
       court: entity.venueName ?? '',
       dateFrom: entity.dateFrom
     };

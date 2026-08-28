@@ -7,8 +7,8 @@ export interface Score {
   teamB: string;
   scoreB: number;
   status: 'LIVE' | 'FINAL' | 'UPCOMING';
-  quarter: string;
-  timeRemaining: string;
+  quarter?: string;
+  timeRemaining?: string;
   court: string;
   dateFrom?: string;
 }
@@ -141,6 +141,15 @@ export default function ScoreDashboard() {
     }
   };
 
+  const formatTimeOnly = (dateStr?: string) => {
+    if (!dateStr) return null;
+    try {
+      return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return null;
+    }
+  };
+
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
@@ -234,6 +243,7 @@ export default function ScoreDashboard() {
                 const isTeamASelected = match.teamA.toLowerCase().includes(selectedTeam.toLowerCase());
                 const isTeamBSelected = match.teamB.toLowerCase().includes(selectedTeam.toLowerCase());
                 const formattedDate = formatDate(match.dateFrom);
+                const scheduledTime = formatTimeOnly(match.dateFrom);
 
                 return (
                   <article key={match.id} className="score-card">
@@ -268,10 +278,16 @@ export default function ScoreDashboard() {
                       </div>
                     </div>
 
-                    {match.status !== 'FINAL' && (
+                    {match.status === 'LIVE' && (
                       <div className="card-footer">
-                        <span className="match-detail">Quarter: {match.quarter}</span>
-                        <span className="match-detail">Time: {match.timeRemaining}</span>
+                        <span className="match-detail">Status: In Progress</span>
+                        {match.quarter && <span className="match-detail">Quarter: {match.quarter}</span>}
+                      </div>
+                    )}
+
+                    {match.status === 'UPCOMING' && scheduledTime && (
+                      <div className="card-footer">
+                        <span className="match-detail">Start Time: {scheduledTime}</span>
                       </div>
                     )}
                   </article>

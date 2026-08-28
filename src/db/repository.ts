@@ -12,12 +12,44 @@ export interface MatchFilters {
 
 /**
  * Upserts a fixture entity into the database.
- * Uses SQLite's ON CONFLICT(id) DO UPDATE.
+ * Updates `updatedAt` ONLY when entity values change or on new insertion.
  */
 export async function upsertEntity(data: Entity) {
   const now = new Date();
   
-  return db.insert(fixtures)
+  // Query existing record to detect changes
+  const existingRecords = await db
+    .select()
+    .from(fixtures)
+    .where(eq(fixtures.id, data.id));
+    
+  const existing = existingRecords.length > 0 ? existingRecords[0] : null;
+
+  let hasChanged = false;
+  if (!existing) {
+    hasChanged = true;
+  } else {
+    hasChanged =
+      existing.compId !== data.compId ||
+      existing.gradeId !== data.gradeId ||
+      existing.gradeName !== data.gradeName ||
+      existing.roundName !== (data.roundName ?? null) ||
+      existing.dateFrom !== data.dateFrom ||
+      existing.dateTo !== (data.dateTo ?? null) ||
+      existing.homeTeamId !== (data.homeTeamId ?? null) ||
+      existing.homeTeamName !== data.homeTeamName ||
+      existing.awayTeamId !== (data.awayTeamId ?? null) ||
+      existing.awayTeamName !== data.awayTeamName ||
+      existing.venueName !== (data.venueName ?? null) ||
+      existing.homeScore !== (data.homeScore ?? null) ||
+      existing.awayScore !== (data.awayScore ?? null) ||
+      existing.statusName !== (data.statusName ?? null);
+  }
+
+  const updatedAtValue = hasChanged ? now : (existing?.updatedAt ?? now);
+
+  return db
+    .insert(fixtures)
     .values({
       id: data.id,
       compId: data.compId,
@@ -26,15 +58,16 @@ export async function upsertEntity(data: Entity) {
       roundName: data.roundName ?? null,
       dateFrom: data.dateFrom,
       dateTo: data.dateTo ?? null,
-      homeTeamId: data.homeTeamId,
+      homeTeamId: data.homeTeamId ?? null,
       homeTeamName: data.homeTeamName,
-      awayTeamId: data.awayTeamId,
+      awayTeamId: data.awayTeamId ?? null,
       awayTeamName: data.awayTeamName,
       venueName: data.venueName ?? null,
       homeScore: data.homeScore ?? null,
       awayScore: data.awayScore ?? null,
       statusName: data.statusName ?? null,
-      lastUpdated: now
+      lastUpdated: now,
+      updatedAt: updatedAtValue
     })
     .onConflictDoUpdate({
       target: fixtures.id,
@@ -45,15 +78,16 @@ export async function upsertEntity(data: Entity) {
         roundName: data.roundName ?? null,
         dateFrom: data.dateFrom,
         dateTo: data.dateTo ?? null,
-        homeTeamId: data.homeTeamId,
+        homeTeamId: data.homeTeamId ?? null,
         homeTeamName: data.homeTeamName,
-        awayTeamId: data.awayTeamId,
+        awayTeamId: data.awayTeamId ?? null,
         awayTeamName: data.awayTeamName,
         venueName: data.venueName ?? null,
         homeScore: data.homeScore ?? null,
         awayScore: data.awayScore ?? null,
         statusName: data.statusName ?? null,
-        lastUpdated: now
+        lastUpdated: now,
+        updatedAt: updatedAtValue
       }
     });
 }
@@ -69,7 +103,6 @@ export async function getEntities(filters: MatchFilters = {}) {
     if (!isNaN(idNum)) {
       conditions.push(eq(fixtures.id, idNum));
     } else {
-      // If a non-numeric ID is passed, force a condition that will return no results
       conditions.push(eq(fixtures.id, -1));
     }
   }
@@ -115,7 +148,7 @@ export async function getEntities(filters: MatchFilters = {}) {
     query = query.where(and(...conditions)) as any;
   }
 
-  // Order by dateFrom (representing match_time) descending
+  // Order by dateFrom descending
   let orderedQuery = query.orderBy(desc(fixtures.dateFrom));
 
   if (filters.limit !== undefined && filters.limit > 0) {

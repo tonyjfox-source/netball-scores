@@ -16,7 +16,8 @@ export const fixtures = sqliteTable('fixtures', {
   homeScore: integer('home_score'),
   awayScore: integer('away_score'),
   statusName: text('status_name'),
-  lastUpdated: integer('last_updated', { mode: 'timestamp' }).notNull()
+  lastUpdated: integer('last_updated', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
 }, (table) => [
   index('home_team_idx').on(table.homeTeamName),
   index('away_team_idx').on(table.awayTeamName),

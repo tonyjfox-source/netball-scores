@@ -32,37 +32,3 @@ export function mapSportyFixture(f: any): any {
 export function validateFixture(mapped: any): Entity {
   return EntitySchema.parse(mapped);
 }
-
-/**
- * Kept for backward compatibility/historical reasons.
- * Parses settings synchronously and returns a mock representation.
- * @deprecated Use mapSportyFixture and validateFixture instead.
- */
-import * as cheerio from 'cheerio';
-export function extractRawData(html: string, url: string): Entity {
-  const $ = cheerio.load(html);
-  const title = $('title').text().trim() || 'Netball Competition';
-  
-  const idMatch = url.match(/(\d+)/);
-  const id = idMatch ? parseInt(idMatch[1], 10) : 1000;
-
-  const mock = {
-    id: id,
-    compId: 13392,
-    gradeId: 565456,
-    gradeName: title,
-    roundName: 'Round 1',
-    dateFrom: new Date().toISOString(),
-    dateTo: null,
-    homeTeamId: 101,
-    homeTeamName: 'Home Team',
-    awayTeamId: 102,
-    awayTeamName: 'Away Team',
-    venueName: 'Venue Court',
-    homeScore: null,
-    awayScore: null,
-    statusName: 'Scheduled'
-  };
-
-  return EntitySchema.parse(mock);
-}
